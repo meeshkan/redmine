@@ -4,18 +4,95 @@ My notes on testing using schemathesis.
 
 ## Builder
 
-1. Installed ruby.
-1. Ran `bundle install`. Got a coffee, as it takes forever on Windows.
-1. Created and activated a python virtual environment using `virtualenv`.
-1. Determined that the run command was `node server.js` using scripts in `package.json`.
-1. Determined the host and port by reading the source code, which makes the [default port `3000` and the default IP `0.0.0.0` in `server.js`](./index.js). This is also printed to the console when the app starts.
-1. Found no OpenAPI spec. Determined the routes by following an `app.use` statement importing a router. `./app/router/index.js`. From here, each route has its own particularities. For example, `/facts` is backed by `./app/router/fact.routes.js`.
-1. I used Stoplight Studio to document three methods of the API. This took about 10 minutes, and is probably faster once you get the hang of it. I was able to make the spec by mixing the documentation, which showed the return values, and the source, which showed the query parameters and endpoints.
-1. When trying to start the server, got a `throw new Error('\'clientAccessToken\' cannot be empty.');` error. Tracing back from the error, I found that `keys.js` needed `APIAI_ACCESS_TOKEN` defined in the environment. Other things I needed to define were `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `BASE_URL`. After this, the server starts.
-1. In a few seconds, the server crashes because it cannot access mongodb. Tried `docker run -d -p 27017:27017 --name mongo1 mongo` but it didn't work because the url was hardcoded as `mongodb://${this.username}:${this.password}@ds157298.mlab.com:57298/${this.name}` in `keys.js`. Changed it to `mongodb://localhost:27017/cat-facts`. Still didn't work. Googling around, I found [this](https://stackoverflow.com/questions/58160691/server-selection-timed-out-after-10000-ms-cannot-connect-compass-to-mongodb-on), which suggested using `127.0.0.1` instead. Still didn't work. Continuing to Google around, I found the suggestion to [set `useUnifiedToplogoy` to false](https://github.com/Automattic/mongoose/issues/8381). Still didn't work. After digging through the codebase, I realized that the url to `mongoose` is supplied _twice_ in `server.js`, once to `MongoStore` and once to `mongoose.connect`. The version supplied to `mongoose.connect` was a hardcoded URL. The author must have copied and pasted it from keys.js. After I changed the hardcoded version to use url defined in `keys.js`, it worked!
-
-In the future, it would be interesting to mock more endpoints to see if a bug could be provoked.
+1. Installed ruby. I've never really used ruby or built a rails app, so this'll be fun!
+1. Ran `gem install rails` because I saw it is a rails app. This step may not be necessary, though, as there is a Gemfile, which I saw later. Then got a coffee, as it takes forever on Windows.
+1. Ran `bundle install`. Saw that it needed `config/database.yml` so I killed the install made that by copying the example file. Ditto for `configuration.yml` and `additional_environment.rb`. The I relaunched `bundle install`. Got a second coffee, as this also took forever.
+1. Did sanity test with `rails s`, the server starts. Noted that the default url in `config/settings.yml` is localhost:3000, which is what the server starts on. Then I pinged the root, which gave an error `(Can't connect to MySQL server on 'localhost' (10061))`.
+1. Tried a dockerized version of `mysql`. Didn't work immediately, too lazy to debug so tried the `sqlite` connector.
+1. This worked, but got the error `Could not find table 'settings'`. Ran `rails db:migrate` and started the server again. This worked, and now redline boots up.
+1. Starting this project, it looked like it was spewing a bunch of html, so I opened my browser and pointed it to `localhost:3000`. There was a possibility to log in, and I created a username and password, but it said "waiting for admin approval". Googling around, I saw the default admin credentials were username `admin`, password `admin`. I used these and got in as admin.
+1. I used the [instructions on the redmine site](https://www.redmine.org/projects/redmine/wiki/Rest_api#Authentication) to enable the REST api.
+1. Smoke tested it with `curl http://admin:<password>@localhost:3000/issues.xml` and it worked.
+1. I found a [swagger spec for redline](https://github.com/komikoni/redmine-swagger/blob/master/swagger.yaml).
+1. Created a virtualenv and installed schemathesis. It barfed because `swagger.yaml` had some undecodable characters. I removed all the descriptions and examples.
 
 ## Runner
 
+Run command: `schemathesis run --base-url http://admin:meeshkan@localhost:3000 .\swagger.yaml`.
+
+```bash
+schemathesis run --base-url http://admin:meeshkan@localhost:3000 .\swagger.yaml
+================ Schemathesis test session starts ================
+platform Windows -- Python 3.7.3, schemathesis-1.1.0, hypothesis-5.8.1, hypothesis_jsonschema-0.12.0, jsonschema-3.2.0
+rootdir: C:\Users\MikeSolomon\devel\test-apis\redmine
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase('C:\\Users\\MikeSolomon\\devel\\test-apis\\redmine\\.hypothesis\\examples')
+Schema location: file:///C:/Users/MikeSolomon/devel/test-apis/redmine/swagger.yaml
+Base URL: http://admin:meeshkan@localhost:3000
+Specification version: Swagger 2.0
+Workers: 1
+collected endpoints: 12
+
+GET /issues.{format} .                                     [  8%] 
+POST /issues.{format} F                                    [ 16%] 
+GET /issues/{issue_id}.{format} .                          [ 25%] 
+PUT /issues/{issue_id}.{format} .                          [ 33%] 
+DELETE /issues/{issue_id}.{format} .                       [ 41%] 
+POST /issues/{issue_id}/watchers.{format} .                [ 50%]
+DELETE /issues/{issue_id}/watchers/{user_id}.{format} .    [ 58%]
+GET /projects.{format} .                                   [ 66%]
+POST /projects.{format} .                                  [ 75%]
+GET /projects/{project_id}.{format} .                      [ 83%]
+PUT /projects/{project_id}.{format} .                      [ 91%]
+DELETE /projects/{project_id}.{format} .                   [100%]
+
+============================ FAILURES ============================
+_____________________ POST: /issues.{format} _____________________
+1. Received a response with 5xx status code: 500
+
+Check           : not_a_server_error
+Path parameters : {'format': 'xml'}
+Body            : {'issue': {'project_id': 0, 'status_id': '', 'tracker_id': 0, 'assigned_to_id': '0'}}
+
+Run this Python code to reproduce this failure: 
+
+    requests.post('http://admin:meeshkan@localhost:3000/issues.xml', json={'issue': {'project_id': 0, 'status_id': '', 'tracker_id': 0, 'assigned_to_id': '0'}})
+
+Or add this option to your command line parameters: --hypothesis-seed=314496125813171442741941431919500862540
+============================ SUMMARY =============================
+
+not_a_server_error            1068 / 1096 passed          FAILED  
+
+================= 11 passed, 1 failed in 197.34s =================
+```
+
+One command failed, so digging into it.
+
+When I run:
+
+```python
+requests.post('http://admin:meeshkan@localhost:3000/issues.xml', json={'issue': {'project_id': 0, 'status_id': '', 'tracker_id': 0, 'assigned_to_id': '0'}})
+```
+
+There is this server error:
+
+```
+   (0.1ms)  rollback transaction
+Completed 500 Internal Server Error in 808ms (ActiveRecord: 776.5ms)
+
+
+
+NoMethodError (undefined method `assignable_users' for nil:NilClass):
+
+app/models/issue.rb:941:in `assignable_users'
+app/models/issue.rb:742:in `validate_issue'
+app/controllers/issues_controller.rb:143:in `create'
+lib/redmine/sudo_mode.rb:64:in `sudo_mode'
+```
+
+My ruby-foo is way to low to understand what this means, but it looks like something is `nil` that is not supposed to be. My uneducated guess is that because a project with id `0` does not exist yet, the project can't be found, but I could be wrong!
+
+At any rate, the app probably shouldn't return a server error, so I think this'd qualify as a bug.
+
 ## Mocker
+
+The only mock I needed to make was the database. `mysql` was too much of a pain, so I used `sqlite`. If it winds up being important, I can investigate why `mysql` was not connecting - probably some connection string issue.

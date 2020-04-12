@@ -1,0 +1,503 @@
+---
+    swagger: '2.0'
+    
+    ################################################################################
+    #                              API Information                                 #
+    ################################################################################
+    info:
+      version: "3.3"
+      title: Redmine API
+      description: |  
+        Redmine exposes some of its data through a REST API. This API provides 
+        access and basic CRUD operations (create, update, delete) for the resources 
+        described below. The API supports both XML and JSON formats.
+    
+    ################################################################################
+    #                  Host, Base Path, Schemes and Content Types                  #
+    ################################################################################
+    # during dev, should point to your local machine
+    host: localhost:8080
+    # basePath prefixes all resource paths 
+    basePath: /
+    # 
+    schemes:
+      # tip: remove http to make production-grade
+      - http
+    # format of bodies a client can send (Content-Type)
+    consumes:
+      - application/json
+    #  - application/xml
+    # format of the responses to the client (Accepts)
+    produces:
+      - application/json
+    #  - application/xml
+    x-a127-config: {}
+    x-a127-services: {}
+    externalDocs:
+      description: Redmine Rest API Reference
+      url: http://www.redmine.org/projects/redmine/wiki/Rest_api
+    
+    ################################################################################
+    #                                   Tags                                       #
+    ################################################################################
+    tags:
+      - name: Issues
+        description: 'Status : Stable, Note : , Availlability : 1.0'
+      - name: Projects
+        description: 'Status : Stable, Note : , Availlability : 1.0'
+    
+    ################################################################################
+    #                                  Security                                    #
+    ################################################################################
+    securityDefinitions:
+      api_key:
+        type: apiKey
+        in: header
+        name: X-Redmine-API-Key
+    security:
+      - api_key: []
+    ################################################################################
+    #                                           Paths                              #
+    ################################################################################
+    paths:
+      /issues.{format}:
+        # binds a127 app logic to a route
+        x-swagger-router-controller: getIssues
+        x-a127-apply: {}
+        parameters:
+          - $ref: '#/parameters/format'
+        get:
+          tags:
+            - Issues
+          summary: Listing issues
+          parameters:
+            - 
+              name: offset
+              in: query
+              description: |
+                skip this number of issues in response (optional)  
+    
+              type: integer
+              allowEmptyValue: true
+            - 
+              name: limit
+              in: query
+              description: number of issues per page (optional)
+              type: integer
+            - 
+              name: sort
+              in: query
+              description: 'column to sort with. Append :desc to invert the order.'
+              type: string
+              collectionFormat: csv
+            - 
+              name: project_id
+              in: query
+              description: get issues from the project with the given id (a numeric value, not a project identifier).
+              type: integer
+            - 
+              name: subproject_id
+              in: query
+              description: get issues from the subproject with the given id. You can use project_id=XXX&subproject_id=!* to get only the issues of a given project and none of its subprojects.
+              type: string
+            - 
+              name: tracker_id
+              in: query
+              description: get issues from the tracker with the given id
+              type: integer
+            - 
+              name: status_id
+              in: query
+              description: 'get issues with the given status id only. Possible values: open, closed, * to get open and closed issues, status id'
+              type: string
+            - 
+              name: assigned_to_id
+              in: query
+              description: get issues which are assigned to the given user id. me can be used instead an ID to fetch all issues from the logged in user (via API key or HTTP auth)
+              type: string
+            - 
+              name: cf_x
+              in: query
+              description: get issues with the given value for custom field with an ID of x. (Custom field must have 'used as a filter' checked.)
+              type: string
+          responses:
+            "200":
+              description: |
+                Success
+                
+              schema:
+                type: object
+                required:
+                  - issues
+                  - total_count
+                  - offset
+                  - limit
+                properties:
+                  issues:
+                    type: array
+                    items:
+                      $ref: '#/definitions/Issue'
+                  total_count:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
+        post:
+          tags:
+            - Issues
+          summary: Creating an issue
+        
+            Creating an issue
+          externalDocs:
+            description: aaaa
+            url: http://www.google.com
+          parameters:
+            - in: body
+              name: BodyJson
+              description: |
+                bodyJsondescription
+                
+                |aa|bb|
+                |--|--|
+                |aa|bb|
+              schema:
+                title: schematitle
+                externalDocs:
+                  description: aaaa
+                  url: http://www.google.com
+                  
+                type: object
+                required:
+                  - issue
+                properties:
+                  issue:
+                    title: titleissue
+                    description: |
+                    
+                      issuedescription
+                    
+                      |aa|bb|cc|
+                      |--|--|--|
+                      |aa|bb|cc|
+                      
+                    externalDocs:
+                      description: issueextention
+                      url: http://www.google.com
+                    type: object
+                    required:
+                      - project_id
+                      - tracker_id
+                      - status_id
+                    properties:
+                      project_id:
+                        type: integer
+                        default: 2
+                      tracker_id:
+                        type: integer
+                      status_id:
+                        type: string
+                      priority_id:
+                        type: integer
+                      subject:
+                        type: string
+                      description:
+                        type: string
+                      category_id:
+                        type: integer
+                      fixed_version_id:
+                        type: string
+                        description: |
+                          'ID of the Target Versions (previously called 'Fixed Version' and still referred to as such in the API)'
+                      assigned_to_id:
+                        type: string
+                        description: |
+                          'ID of the user to assign the issue to (currently no mechanism to assign by name)'
+                      parent_issue_id:
+                        type: string
+                        description: |
+                          'ID of the parent issue'
+                      custom_fields:
+                        type: string
+                        description: |
+                          'See Custom fields'
+                      watcher_user_ids:
+                        type: string
+                        description: |
+                          'Array of user ids to add as watchers (since 2.3.0)'
+                      is_private:
+                        type: boolean
+                        enum:
+                          - false
+                          - true
+                        description: |
+                          'Use true or false to indicate whether the issue is private or not'
+                      estimated_hours:
+                        type: string
+                        description: |
+                          'Number of hours estimated for issue'
+          responses:
+            "200":
+              description: Success
+    
+      /issues/{issue_id}.{format}:
+        parameters:
+          - $ref: '#/parameters/issue_id'
+          - $ref: '#/parameters/format'
+        get:
+          tags:
+            - Issues
+          summary: Showing an issue
+          responses:
+            "200":
+              schema:
+                type: object
+                required:
+                  - issue
+                properties:
+                  issue:
+                    $ref: '#/definitions/Issue'
+              description: Success
+        put:
+          tags:
+            - Issues
+          summary: Updating an issue
+          responses:
+            "200":
+              description: Success
+        delete:
+          tags:
+            - Issues
+          summary: Deleting an issue
+          responses:
+            "200":
+              headers:
+                X-dummy:
+                  type: string
+              description: Success
+      /issues/{issue_id}/watchers.{format}:
+        parameters:
+          - $ref: '#/parameters/issue_id'
+          - $ref: '#/parameters/format'
+        post:
+          tags:
+            - Issues
+          summary: Adding a watcher
+          parameters:
+            - in: body
+              name: BodyJson
+              description: user_id
+              schema:
+                type: object
+                required:
+                  - user_id
+                properties:
+                  user_id:
+                    type: string
+                    description: id of the user to add as a watcher
+          responses:
+            "200":
+              description: Success
+      /issues/{issue_id}/watchers/{user_id}.{format}:
+        parameters:
+          - $ref: '#/parameters/issue_id'
+          - $ref: '#/parameters/user_id'
+          - $ref: '#/parameters/format'
+        delete:
+          tags:
+            - Issues
+          summary: Removing a watcher
+          responses:
+            "200":
+              description: Success
+      /projects.{format}:
+        parameters:
+          - $ref: '#/parameters/format'
+        get:
+          tags:
+            - Projects
+          summary: Listing projects
+          description: Returns all projects (all public projects and private projects where user have access to)
+          parameters:
+            - in: query
+              name: include
+              required: false
+              description: |
+                fetch associated data (optional). Possible values: trackers, issue_categories, enabled_modules (since 2.6.0).
+                Values should be separated by a comma ",".
+              type: string
+          responses:
+            "200":
+              description: Success
+              schema:
+                type: object
+                required:
+                  - projects
+                  - offset
+                  - limit
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      $ref: '#/definitions/Project'
+                  total_count:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
+        post:
+          tags:
+            - Projects
+          summary: Creating a project
+          description: Creates a the project.
+          responses:
+            "200":
+              description: Success
+      /projects/{project_id}.{format}:
+        parameters:
+          - $ref: '#/parameters/project_id'
+          - $ref: '#/parameters/format'
+        get:
+          tags:
+            - Projects
+          summary: Showing a project
+          description: Returns the project of given id or identifier.
+          responses:
+            "200":
+              description: Success
+        put:
+          tags:
+            - Projects
+          summary: Updating a project
+          description: Updates the project of given id or identifier.
+          responses:
+            "200":
+              description: Success
+        delete:
+          tags:
+            - Projects
+          summary: Deleting a project
+          description: Deletes the project of given id or identifier.
+          responses:
+            "200":
+              description: Success
+    parameters:
+      format:
+        name: format
+        in: path
+        description: json or xml
+        type: string
+        required: true
+        default: json
+        enum:
+          - json
+          - xml
+      issue_id:
+        name: issue_id
+        in: path
+        description: The user identifier number
+        type: number
+        required: true
+      user_id:
+        name: user_id
+        in: path
+        description: The user identifier number
+        type: number
+        required: true
+      project_id:
+        name: project_id
+        in: path
+        description: The user identifier number
+        type: string
+        required: true
+    definitions:
+      Issue:
+        type: object
+        required:
+          - id
+          - project
+          - tracker
+          - status
+          - priority
+          - author
+          - subject
+          - description
+          - start_date
+          - done_ratio
+          - created_on
+          - updated_on
+        properties:
+          id:
+            type: integer
+          project:
+            $ref: '#/definitions/IdName'
+          tracker:
+            $ref: '#/definitions/IdName'
+          status:
+            $ref: '#/definitions/IdName'
+          priority:
+            $ref: '#/definitions/IdName'
+          author:
+            $ref: '#/definitions/IdName'
+          subject:
+            type: string
+          description:
+            type: string
+          start_date:
+            type: string
+          done_ratio:
+            type: string
+          created_on:
+            type: string
+            format: date-time
+          updated_on:
+            type: string
+            format: date-time
+      IdName:
+        type: object
+        required:
+          - id
+          - name
+        properties:
+          id:
+            type: integer
+          name:
+            type: string
+      Project:
+        type: object
+        required:
+          - id
+          - name
+          - identifier
+          - description
+          - status
+          - created_on
+          - updated_on
+        properties:
+          id:
+            type: integer
+          name:
+            type: integer
+          identifier:
+            type: integer
+          description:
+            type: integer
+          status:
+            type: integer
+          is_public:
+            type: boolean
+          trackers:
+            type: array
+            items:
+              type: string
+          issue_categories:
+            type: array
+            items:
+              type: string
+          created_on:
+            type: string
+            format: date-time
+          updated_on:
+            type: string
+            format: date-time
